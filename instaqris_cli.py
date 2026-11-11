@@ -20,7 +20,7 @@ Interaktif:
   python3 instaqris_cli.py
 
 Non-interaktif:
-  python3 instaqris_cli.py login [--phone 62xxxx]
+  python3 instaqris_cli.py login [--phone 62xxxx] [--via wa|sms]
   python3 instaqris_cli.py saldo
   python3 instaqris_cli.py riwayat [YYYY-MM-DD]
   python3 instaqris_cli.py mutasi [YYYY-MM-DD]
@@ -55,11 +55,12 @@ CFG = Path.home() / ".config" / "speedcash-cli" / "config.json"
 
 
 def _load_local_config() -> dict:
-    """Kredensial riset (lihat README): oauth_basic, aes_key_b64, uuid.
+    """Kredensial opsional: oauth_basic, aes_key_b64, uuid.
 
     Dibaca dari config.json (chmod 600) atau env INSTAQRIS_OAUTH_BASIC /
-    INSTAQRIS_AES_KEY / INSTAQRIS_UUID. Nilai asli didapat dari proses
-    capture milikmu sendiri (jangan pakai milik orang lain).
+    INSTAQRIS_AES_KEY / INSTAQRIS_UUID. Kredensial statis aplikasi sudah
+    dibundel di kode (APP_*), jadi bagian ini hanya untuk override /
+    menetapkan uuid perangkat.
     """
     cfg = {}
     try:
@@ -75,9 +76,15 @@ def _load_local_config() -> dict:
     }
 
 
+# Nilai statis level APLIKASI — sama untuk semua instalasi (embedded di aplikasinya).
+# Disertakan agar CLI langsung bisa dipakai login dengan akun masing-masing;
+# bisa di-override lewat config.json / env bila perlu.
+APP_OAUTH_BASIC = "Basic NmQ1NDc2NTctOWQwMi00MjhhLWJhOTktNmJmNmMyZTIwOTcxOmJlYzQyNDVjLWU4Y2YtNDAyOC1iOWYyLWNlYTBjNjI5ODU3Mw=="
+APP_AES_KEY_B64 = "Yzg1MDhmNDYzZjRlMWExOGJkNTk5MmVmNzFkOGQyNzk="
+
 _CFG = _load_local_config()
-BASIC = _CFG["oauth_basic"]
-AES_KEY_B64 = _CFG["aes_key_b64"]
+BASIC = _CFG["oauth_basic"] or APP_OAUTH_BASIC
+AES_KEY_B64 = _CFG["aes_key_b64"] or APP_AES_KEY_B64
 DEFAULT_UUID = _CFG["uuid"]
 VER = {"version_code": "435", "version_name": "3.9.1", "via": "SC_MERCHANT", "appid": "SPEEDCASH", "app_id": "SPEEDCASH"}
 NON_ENCRYPT = ("/v4/oauth/token", "/v4/auth/login", "/v4/auth/check_user", "/v4/auth/register", "/v4/otp/generate", "/v4/otp/validate")
@@ -211,7 +218,7 @@ def get_client_token(force: bool = False) -> str:
     return j["access_token"]
 
 
-def login_flow(phone: str | None = None, uuid: str | None = None) -> bool:
+def login_flow(phone: str | None = None, uuid: str | None = None, via: str | None = None) -> bool:
     s = load_session()
     phone = (phone or s.get("phone") or "").strip()
     if not phone:
@@ -240,6 +247,15 @@ def login_flow(phone: str | None = None, uuid: str | None = None) -> bool:
             log(f"✔ uuid device baru dibuat & disimpan: {uuid}")
         except Exception:
             pass
+    if via is None:
+        c = input("Metode OTP \u2014 1=WhatsApp  2=SMS  (Enter=WhatsApp, 00=batal): ").strip()
+        if c == "00":
+            return False
+        via = "sms" if c == "2" else "wa"
+    via = (via or "wa").strip().lower()
+    if via not in ("wa", "sms"):
+        via = "wa"
+    nama_via = "WhatsApp" if via == "wa" else "SMS"
     try:
         get_client_token()
 
@@ -253,13 +269,13 @@ def login_flow(phone: str | None = None, uuid: str | None = None) -> bool:
 
         r = api("POST", "/v4/otp/generate", tok="client", body={
             "state": "login", "location": "0.0", "uuid": uuid, "phone": phone,
-            "type": "wa", **VER})
+            "type": via, **VER})
         j = r.json()
         if j.get("rc") != "00":
             log(f"✖ otp/generate: {j.get('rc')} {j.get('rd')}")
             return False
         nxt = ((j.get("data") or {}).get("next_request_in_second")) or "?"
-        log(f"✔ OTP dikirim via WhatsApp (bisa minta ulang dalam {nxt}s)")
+        log(f"✔ OTP dikirim via {nama_via} (bisa minta ulang dalam {nxt}s)")
         otp = input("Kode OTP: ").strip()
         if not otp:
             log("✖ OTP kosong.")
@@ -267,7 +283,7 @@ def login_flow(phone: str | None = None, uuid: str | None = None) -> bool:
 
         r = api("POST", "/v4/otp/validate", tok="client", body={
             "state": "login", "location": "0.0", "uuid": uuid, "phone": phone,
-            "token": otp, "type": "wa", **VER})
+            "token": otp, "type": via, **VER})
         j = r.json()
         if j.get("rc") != "00":
             log(f"✖ OTP salah / gagal: {j.get('rc')} {j.get('rd')}")
@@ -934,9 +950,10 @@ def main() -> int:
     ap.add_argument("--debug", action="store_true", help="tampilkan detail request")
     sub = ap.add_subparsers(dest="cmd")
 
-    p_login = sub.add_parser("login", help="login via OTP WhatsApp")
+    p_login = sub.add_parser("login", help="login via OTP (WhatsApp/SMS)")
     p_login.add_argument("--phone", default=None)
     p_login.add_argument("--uuid", default=None)
+    p_login.add_argument("--via", choices=["wa", "sms"], default=None, help="kanal OTP: wa (default) / sms")
 
     sub.add_parser("saldo")
 
@@ -976,7 +993,7 @@ def main() -> int:
             menu()
             return 0
         if args.cmd == "login":
-            return 0 if login_flow(args.phone, args.uuid) else 1
+            return 0 if login_flow(args.phone, args.uuid, args.via) else 1
         if args.cmd == "saldo":
             if ensure_login():
                 cmd_saldo()

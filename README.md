@@ -10,6 +10,10 @@ CLI terminal ringan untuk **SpeedCash Merchant / InstaQRIS** — ditulis dengan
 Python, jalan di **Termux (Android)** maupun Linux. Semua data diambil
 real-time dari server resmi menggunakan sesi login akunmu sendiri.
 
+**Langsung bisa dipakai:** kredensial statis aplikasi sudah disertakan di CLI —
+kamu cukup login dengan nomor & OTP milikmu. Setiap pengguna memakai akun
+masing-masing.
+
 ## Fitur
 
 - Login via OTP WhatsApp
@@ -51,18 +55,21 @@ Semua state tersimpan **lokal** di `~/.config/speedcash-cli/`:
 - `session.json` — sesi login, default path:
   `~/.config/speedcash-cli/session.json` (chmod 600)
 - `qris_log.json` — catatan kecil per bill QRIS (untuk `created_at`/`expired_at`)
-- `config.json` — kredensial milikmu (chmod 600):
+- `config.json` — **opsional** (chmod 600):
 
 ```json
 {
-  "oauth_basic": "Basic <base64 client_id:client_secret>",
-  "aes_key_b64": "<key AES-GCM untuk body request>",
-  "uuid": "<device uuid — opsional; dibuat otomatis bila kosong>"
+  "uuid": "<device uuid — dibuat otomatis bila kosong>",
+  "oauth_basic": "<opsional — override kredensial statis bawaan>",
+  "aes_key_b64": "<opsional — override kredensial statis bawaan>"
 }
 ```
 
-Nilai kredensial **tidak disertakan di repo ini** — gunakan milikmu sendiri.
-Alternatif: env `INSTAQRIS_OAUTH_BASIC`, `INSTAQRIS_AES_KEY`, `INSTAQRIS_UUID`.
+Kredensial statis level aplikasi (berlaku umum untuk aplikasi ini) sudah
+dibundel di CLI, jadi login bisa langsung dipakai dengan akun masing-masing
+via OTP. `config.json` hanya diperlukan bila ingin override atau menetapkan
+uuid perangkat. Alternatif env: `INSTAQRIS_UUID`, `INSTAQRIS_OAUTH_BASIC`,
+`INSTAQRIS_AES_KEY`.
 
 > Ingin CLI portabel (state menempel di sebelah file, bukan di home)?
 > Ubah `SESSION` / `QRLOG` / `CFG` menjadi
