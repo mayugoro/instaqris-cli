@@ -1,0 +1,16 @@
+# State & data sensitif — JANGAN di-commit
+session.json
+config.json
+qris_log.json
+.env
+*.log
+*.jsonl
+*.apk
+captures/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
