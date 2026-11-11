@@ -11,12 +11,12 @@ Python, jalan di **Termux (Android)** maupun Linux. Semua data diambil
 real-time dari server resmi menggunakan sesi login akunmu sendiri.
 
 **Langsung bisa dipakai:** kredensial statis aplikasi sudah disertakan di CLI —
-kamu cukup login dengan nomor & OTP milikmu. Setiap pengguna memakai akun
-masing-masing.
+kamu cukup login dengan nomor & OTP milikmu (via **WhatsApp** atau **SMS**,
+sama seperti di aplikasinya). Setiap pengguna memakai akun masing-masing.
 
 ## Fitur
 
-- Login via OTP WhatsApp
+- Login via **OTP WhatsApp atau SMS** — pilih kanalnya saat login, sama seperti di aplikasinya
 - **Saldo** dan **Mutasi saldo**
 - **Riwayat transaksi** (per tanggal) + **Struk** (cetak ulang)
 - **Detail merchant**
@@ -29,7 +29,7 @@ masing-masing.
 
 ```bash
 python3 instaqris_cli.py            # menu interaktif
-python3 instaqris_cli.py login      # login OTP WhatsApp
+python3 instaqris_cli.py login      # login OTP (pilih: WhatsApp / SMS)
 python3 instaqris_cli.py saldo
 python3 instaqris_cli.py riwayat [YYYY-MM-DD]
 python3 instaqris_cli.py mutasi [YYYY-MM-DD]
@@ -41,6 +41,15 @@ python3 instaqris_cli.py raw <METHOD> <path> [--encrypt]
 ```
 
 Konvensi menu interaktif: `00` = kembali ke menu utama.
+
+### Kanal OTP saat login
+
+Sama seperti di aplikasinya, saat login kamu bisa memilih kanal OTP:
+
+- **WhatsApp** — pilih `1` (default, cukup tekan Enter)
+- **SMS** — pilih `2`
+
+Non-interaktif: `python3 instaqris_cli.py login --via wa` atau `--via sms`.
 
 ## Dependensi
 
